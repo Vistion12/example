@@ -110,6 +110,41 @@ function clearPosts(): string
 function searchPost(): string
 {
     //TODO необязательно, реализовать поиск по заголовку (можно и по всему телу), поисковый запрос через readline
+    $query= readline("Введите запрос ");
+
+    if (empty($query)) {
+        return handleError("Ошибка: запрос не может быть пустым.");
+    }
+
+    if(!file_exists('db.txt')){
+        return handleError("Errror: постов не существует добавьте посты ");
+    }
+
+    $file = fopen('db.txt', 'r');
+    if(!$file){
+        return  handleError("error: невозможно открыть файл для четния");
+    }
+
+    $posts = fread($file, filesize('db.txt'));
+    fclose($file);
+
+    $lines = explode("\n", $posts);
+    $foundPosts = [];
+
+    foreach ($lines as $line) {
+        if ($line && stripos($line, $query) !== false) {
+            $postParts = explode(";", $line);
+            $foundPosts[] = "Заголовок: " . $postParts[0] . "\nКонтент: " . $postParts[1];
+        }
+    }
+
+    if (empty($foundPosts)) {
+        return "Не найдено постов, соответствующих запросу \"$query\".";
+    }
+
+    return implode("\n\n", $foundPosts);
+
+
 }
 
 function delPost():string
