@@ -16,7 +16,9 @@ function addPost(): string
         return handleError("Error: заголовок и текст не должны быть пустыми ");
     }
 
-    $file= fopen('db.txt','a');
+    $dbFile = getDatabase();
+
+    $file= fopen($dbFile,'a');
 
     if(!$file){
         return handleError("Error: файл не открыт для записи");
@@ -33,20 +35,22 @@ function addPost(): string
 function readAllPosts(): string
 {
     //TODO реализовать чтение всех постов но вывести только заголовки
-    if(!file_exists('db.txt')){
+    $dbFile = getDatabase();
+
+    if(!file_exists($dbFile)){
         return handleError("Errror: невозможно прочитать файл ");
     }
 
-    if (filesize('db.txt') == 0) {
+    if (filesize($dbFile) == 0) {
         return "Нет постов для отображения.";
     }
 
-    $file = fopen('db.txt','r');
+    $file = fopen($dbFile,'r');
     if(!$file){
         return  handleError("Error: Ошибка открытия файла");
     }
 
-    $posts = fread($file,filesize('db.txt'));
+    $posts = fread($file,filesize($dbFile));
 
     fclose($file);
 
@@ -71,16 +75,18 @@ function readPost(): string
 
     $postNumber = $_SERVER['argv'][2];
 
-    if(!file_exists('db.txt')){
+    $dbFile = getDatabase();
+
+    if(!file_exists($dbFile)){
         return handleError("Errror: постов не существует добавьте посты ");
     }
 
-    $file = fopen('db.txt', 'r');
+    $file = fopen($dbFile, 'r');
     if(!$file){
         return  handleError("error: невозможно открыть файл для четния");
     }
 
-    $posts = fread($file, filesize('db.txt'));
+    $posts = fread($file, filesize($dbFile));
     fclose($file);
 
     $lines = explode("\n",$posts);
@@ -96,10 +102,13 @@ function readPost(): string
 function clearPosts(): string
 {
     //TODO стереть все посты
-    if(!file_exists('db.txt')){
+
+    $dbFile = getDatabase();
+
+    if(!file_exists($dbFile)){
         return handleError("Errror: постов не существует добавьте посты ");
     }
-    $file=fopen('db.txt','w');
+    $file=fopen($dbFile,'w');
     if(!$file){
         return handleError("error: невозможно очистить файл");
     }
@@ -116,16 +125,18 @@ function searchPost(): string
         return handleError("Ошибка: запрос не может быть пустым.");
     }
 
-    if(!file_exists('db.txt')){
+    $dbFile = getDatabase();
+
+    if(!file_exists($dbFile)){
         return handleError("Errror: постов не существует добавьте посты ");
     }
 
-    $file = fopen('db.txt', 'r');
+    $file = fopen($dbFile, 'r');
     if(!$file){
         return  handleError("error: невозможно открыть файл для четния");
     }
 
-    $posts = fread($file, filesize('db.txt'));
+    $posts = fread($file, filesize($dbFile));
     fclose($file);
 
     $lines = explode("\n", $posts);
@@ -155,16 +166,18 @@ function delPost():string
 
     $postNumber = $_SERVER['argv'][2];
 
-    if (!file_exists('db.txt')) {
+    $dbFile = getDatabase();
+
+    if (!file_exists($dbFile)) {
         return handleError("Error: постов не существует, добавьте посты");
     }
 
-    $file = fopen('db.txt', 'r');
+    $file = fopen($dbFile, 'r');
     if (!$file) {
         return handleError("Error: невозможно открыть файл для чтения");
     }
 
-    $posts = fread($file, filesize('db.txt'));
+    $posts = fread($file, filesize($dbFile));
     fclose($file);
 
     $lines = explode("\n", $posts);
@@ -175,7 +188,7 @@ function delPost():string
 
     unset($lines[$postNumber - 1]);
 
-    $file = fopen('db.txt', 'w');
+    $file = fopen($dbFile, 'w');
     if (!$file) {
         return handleError("Error: невозможно открыть файл для записи");
     }
