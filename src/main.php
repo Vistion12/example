@@ -20,9 +20,10 @@ function parseCommand(): string
         'add-post' => 'addPost',
         'read-all-posts' => 'readAllPosts',
         'read-post' => 'readPost',
-        'clear-posts' => 'clearPosts',
         'search-post' => 'searchPost',
         'delete-post' =>'delPost',
+        'init' =>'initDB',
+        'seed'=> 'seedDB',
     ];
 
     $functionName = $commands[$_SERVER['argv'][1]] ?? 'handleHelp';

@@ -1,201 +1,130 @@
 <?php
-
-
 function addPost(): string
 {
-    //TODO реализовать функционал добавление поста в хранилище db.txt
-    // Заголовок и тело поста считывает тут же через readline
-    // диалог с пользователем введите заголовок введите пост далее открываем файл если нет вернуть красный цвет ошибки
-    // обработать ошибки
-    // разделить точкой с запятой
-    // в случае успеха вернуть текст что пост добавлен
-    $title = readline("Введите заголовок ");
-    $content = readline("Введите текст поста ");
+    //TODO переделать реализацию методов на работу с БД использовать prepare statements
+    //прежде чем добавлять пост продумать как о том что надо вводить же айди категории
+    $db = getDB();
 
-    if (empty($title)|| empty($content)){
-        return handleError("Error: заголовок и текст не должны быть пустыми ");
+    // Получаем все категории
+    $stmt = $db->query("SELECT id, category FROM categories");
+    $categories = $stmt->fetchAll();
+
+    // Выводим список категорий
+    echo "Список категорий:\n";
+    foreach ($categories as $category) {
+        echo "{$category['id']}. {$category['category']}\n";
     }
 
-    $dbFile = getDatabase();
+    // Получаем ID категории
+    do {
+        $categoryId = (int)readline("Введите ID категории: ");
+    } while (!in_array($categoryId, array_column($categories, 'id')));
 
-    $file= fopen($dbFile,'a');
+    // Вводим данные поста
+    $title = readline("Введите заголовок поста: ");
+    $content = readline("Введите текст поста: ");
 
-    if(!$file){
-        return handleError("Error: файл не открыт для записи");
-    }
+    // Добавляем пост в БД
+    $db->prepare("INSERT INTO posts (title, text, id_category) VALUES (:title, :text, :id_category)")
+        ->execute(['title' => $title, 'text' => $content, 'id_category' => $categoryId]);
 
-    $post = $title . "; " . $content .  "\n";
-
-    fwrite($file,$post);
-
-    fclose($file);
-    return "пост добавлен";
+    return "Пост добавлен";
 }
 
 function readAllPosts(): string
 {
-    //TODO реализовать чтение всех постов но вывести только заголовки
-    $dbFile = getDatabase();
+    //TODO организовать вывод 1 пост 1 строка в виде текста. подсказка использовать fetch
+    // или преобразоватьмассив в текст
+    $db = getDB();
+    $stmt = $db->query("SELECT p.id AS post_id, c.id AS cat_id, c.category AS category, p.title AS post_title, p.text AS post_text 
+        FROM posts p 
+        JOIN categories c ON p.id_category = c.id");
 
-    if(!file_exists($dbFile)){
-        return handleError("Errror: невозможно прочитать файл ");
+    $result = $stmt->fetchAll();
+
+    if (empty($result)) {
+        return "Посты не найдены.";
     }
 
-    if (filesize($dbFile) == 0) {
-        return "Нет постов для отображения.";
+    $output = "";
+    foreach ($result as $post) {
+        $output .= "Пост #{$post['post_id']} ({$post['category']}): {$post['post_title']}\n";
+        $output .= "{$post['post_text']}\n\n";
     }
 
-    $file = fopen($dbFile,'r');
-    if(!$file){
-        return  handleError("Error: Ошибка открытия файла");
-    }
-
-    $posts = fread($file,filesize($dbFile));
-
-    fclose($file);
-
-    $lines = explode("\n", $posts);
-    $headers = '';
-    foreach ($lines as $line){
-        if($line){
-            $postParts = explode(";", $line);
-            $headers .= $postParts[0] . "\n";
-        }
-    }
-
-    return $headers ? $headers : "посты отсутствуют" ;
+    return $output;
 }
 
 function readPost(): string
 {
-    //TODO реализовать чтение одного поста, номер поста считывай из командной строки
-    if(!isset($_SERVER['argv'][2])){
-        return handleError("Error: Не указан номер поста");
+    $db = getDB();
+
+    do {
+        $id = (int)readline("Введите айди поста: ");
+    } while (empty($id));
+
+    $stmt = $db->prepare("SELECT p.id AS post_id, c.category AS category, p.title AS post_title, p.text AS post_text
+        FROM posts p
+        JOIN categories c ON p.id_category = c.id
+        WHERE p.id = :id");
+    $stmt->execute(['id' => $id]);
+
+    $post = $stmt->fetch();
+
+    if (!$post) {
+        return "Пост не найден.";
     }
 
-    $postNumber = $_SERVER['argv'][2];
-
-    $dbFile = getDatabase();
-
-    if(!file_exists($dbFile)){
-        return handleError("Errror: постов не существует добавьте посты ");
-    }
-
-    $file = fopen($dbFile, 'r');
-    if(!$file){
-        return  handleError("error: невозможно открыть файл для четния");
-    }
-
-    $posts = fread($file, filesize($dbFile));
-    fclose($file);
-
-    $lines = explode("\n",$posts);
-    if(!isset($lines[$postNumber-1])){
-        return handleError("error: пост с таким номером не найден");
-    }
-
-    $postParts = explode(";", $lines[$postNumber-1]);
-    return "Заголовок: " . $postParts[0] . "\nКонтент: " . $postParts[1];
-
+    return "Пост #{$post['post_id']} ({$post['category']}): {$post['post_title']}\n{$post['post_text']}";
 }
 
-function clearPosts(): string
-{
-    //TODO стереть все посты
-
-    $dbFile = getDatabase();
-
-    if(!file_exists($dbFile)){
-        return handleError("Errror: постов не существует добавьте посты ");
-    }
-    $file=fopen($dbFile,'w');
-    if(!$file){
-        return handleError("error: невозможно очистить файл");
-    }
-    fclose($file);
-    return "все посты удалены";
-}
 
 function searchPost(): string
 {
-    //TODO необязательно, реализовать поиск по заголовку (можно и по всему телу), поисковый запрос через readline
-    $query= readline("Введите запрос ");
+    //TODO реализовать поиск по заголовку (можно и по всему телу), поисковый запрос через readline
+    $db = getDB();
+    $query = readline("Введите запрос для поиска: ");
 
-    if (empty($query)) {
-        return handleError("Ошибка: запрос не может быть пустым.");
+    $stmt = $db->prepare("SELECT p.id AS post_id, c.category AS category, p.title AS post_title, p.text AS post_text
+        FROM posts p
+        JOIN categories c ON p.id_category = c.id
+        WHERE p.title LIKE :query OR p.text LIKE :query");
+    $stmt->execute(['query' => "%$query%"]);
+
+    $result = $stmt->fetchAll();
+
+    if (empty($result)) {
+        return "Посты не найдены.";
     }
 
-    $dbFile = getDatabase();
-
-    if(!file_exists($dbFile)){
-        return handleError("Errror: постов не существует добавьте посты ");
+    $output = "";
+    foreach ($result as $post) {
+        $output .= "Пост #{$post['post_id']} ({$post['category']}): {$post['post_title']}\n";
+        $output .= "{$post['post_text']}\n\n";
     }
 
-    $file = fopen($dbFile, 'r');
-    if(!$file){
-        return  handleError("error: невозможно открыть файл для четния");
-    }
-
-    $posts = fread($file, filesize($dbFile));
-    fclose($file);
-
-    $lines = explode("\n", $posts);
-    $foundPosts = [];
-
-    foreach ($lines as $line) {
-        if ($line && stripos($line, $query) !== false) {
-            $postParts = explode(";", $line);
-            $foundPosts[] = "Заголовок: " . $postParts[0] . "\nКонтент: " . $postParts[1];
-        }
-    }
-
-    if (empty($foundPosts)) {
-        return "Не найдено постов, соответствующих запросу \"$query\".";
-    }
-
-    return implode("\n\n", $foundPosts);
-
-
+    return $output;
 }
 
 function delPost():string
 {
-    if (!isset($_SERVER['argv'][2])) {
-        return handleError("Error: Не указан номер поста");
+    $db = getDB();
+
+    do {
+        $id = (int)readline("Введите ID поста для удаления: ");
+    } while (empty($id));
+
+    // Проверка существования поста
+    $stmt = $db->prepare("SELECT * FROM posts WHERE id = :id");
+    $stmt->execute(['id' => $id]);
+    $post = $stmt->fetch();
+
+    if (!$post) {
+        return "Пост не найден.";
     }
 
-    $postNumber = $_SERVER['argv'][2];
+    // Удаление поста
+    $db->prepare("DELETE FROM posts WHERE id = :id")->execute(['id' => $id]);
 
-    $dbFile = getDatabase();
-
-    if (!file_exists($dbFile)) {
-        return handleError("Error: постов не существует, добавьте посты");
-    }
-
-    $file = fopen($dbFile, 'r');
-    if (!$file) {
-        return handleError("Error: невозможно открыть файл для чтения");
-    }
-
-    $posts = fread($file, filesize($dbFile));
-    fclose($file);
-
-    $lines = explode("\n", $posts);
-
-    if (!isset($lines[$postNumber - 1]) || empty($lines[$postNumber - 1])) {
-        return handleError("Error: пост с таким номером не найден");
-    }
-
-    unset($lines[$postNumber - 1]);
-
-    $file = fopen($dbFile, 'w');
-    if (!$file) {
-        return handleError("Error: невозможно открыть файл для записи");
-    }
-
-    $newContent = implode("\n", $lines);
-    fwrite($file, $newContent);
-    fclose($file);
-
-    return "Пост с номером $postNumber удалён.";
+    return "Пост с ID $id удален.";
 }
